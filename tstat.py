@@ -51,7 +51,7 @@ def sort_dict(d) -> str:
         ticker = tinkoff.search_figi(figi).ticker
         result += f"{num}) {ticker} (${value}) "
         num += 1
-        if num > 3:
+        if num > 5:
             break
     return result
 
@@ -82,7 +82,7 @@ def day_results(operations, date, to_reversed):
         for position in portfolio_positions:
             positions[position.figi] = position.balance
     else:
-        dict()
+        positions = dict()
     table_trades = dict()
     
     dict_turnovers = dict()
@@ -197,7 +197,7 @@ def day_results(operations, date, to_reversed):
     
     summary_table.add_row([current_day, oborot_usd, oborot_rub, commission_usd, commission_rub, profit_usd, profit_rub, efficiency, num_of_trades])
 
-    if to_reversed:
+    if len(summary_table.get_string().split("\n")) > 5: # If more than one day in the table, then it's need to display the line with totals
         calculate_totals(summary_table, oborot_intraday_summary)
         print_with_footer(summary_table)
     else:
@@ -219,8 +219,8 @@ def get_date_from_string(date_str):
     return datetime.datetime.combine(date_without_sec, datetime.time(2, 0))
 
 
-if __name__ == "__main__":
-    nop = len(sys.argv)
+def get_period(args, to_reversed):
+    nop = len(args)
     first_date = None
     second_date = None
     date2 = None
@@ -228,16 +228,35 @@ if __name__ == "__main__":
         first_date = sys.argv[1]
     if nop > 2:
         second_date = sys.argv[2]
-    if first_date == None:
-        date1 = get_now() - datetime.timedelta(hours=3)
+    today = get_now() - datetime.timedelta(hours=3)
+    if first_date == None or first_date.lower() == "today":
+        date1 = today
         to_reversed = False
+    elif first_date.lower() == "yesterday":
+        date1 = today - datetime.timedelta(days=1)
+    elif first_date.lower() == "thisweek":
+        date2 = today
+        weekday = date2.weekday()
+        date1 = today - datetime.timedelta(days=weekday)
+    elif first_date.lower() == "thismonth":
+        date2 = today
+        date1 = today.replace(day=1, hour=2, minute=0, second=0, microsecond=0)
+    elif first_date.lower() == "thisyear":
+        date2 = today
+        date1 = today.replace(month=1, day=1, hour=2, minute=0, second=0, microsecond=0)
     else:
         date1 = get_date_from_string(first_date)
-        to_reversed = True
     if second_date != None:
         date2 = get_date_from_string(second_date)
-        if date2 < date1:
-            date1, date2 = date2, date1
+    if date2 != None and date2 < date1:
+        date1, date2 = date2, date1
+    
+    return date1, date2
+
+
+if __name__ == "__main__":
+    to_reversed = True
+    date1, date2 = get_period(sys.argv, to_reversed)
     
     operations = tinkoff.get_operations(date1, date2)
     day_results(operations, date1, to_reversed)
