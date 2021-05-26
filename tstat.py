@@ -63,7 +63,7 @@ def print_top_results(dict_turnovers, dict_day_profits):
           f"ТОП бумаг по прибыли: {result_of_sorting_dp}\n")
 
 
-def day_results(operations, date, to_reversed):
+def day_results(operations, date, to_reversed, consolidated):
     rates = ExchangeRates(date)
     oborot_rub = Decimal('0')
     oborot_usd = Decimal('0')
@@ -95,7 +95,8 @@ def day_results(operations, date, to_reversed):
     summary_table.align["День"] = "c"
             
     currentdate = date.combine(date.date(), date.min.time())
-    
+    startdate = currentdate
+
     if to_reversed:
         operations.reverse()
 
@@ -110,28 +111,30 @@ def day_results(operations, date, to_reversed):
         operationdate = operationdate.combine(operationdate.date(), operationdate.min.time())
         
         if operationdate != currentdate:
-            if oborot_usd != 0:
-                oborot_rub = round(oborot_rub, 2)
-                oborot_usd = round(oborot_usd, 2)
-                commission_rub = round(commission_rub, 2)
-                commission_usd = round(commission_usd, 2)
-                profit_rub = round(profit_rub, 2)
-                profit_usd = round(profit_usd, 2)
-                efficiency = round(profit_usd / oborot_intraday * 200, 2) if oborot_intraday != 0 else round(Decimal('0'), 2)
-                current_day = currentdate.strftime("%Y-%m-%d")
-                summary_table.add_row([current_day, oborot_usd, oborot_rub, commission_usd, commission_rub, profit_usd, profit_rub, efficiency, num_of_trades])
-            currentdate = operationdate
+            if not consolidated:
+                if oborot_usd != 0:
+                    oborot_rub = round(oborot_rub, 2)
+                    oborot_usd = round(oborot_usd, 2)
+                    commission_rub = round(commission_rub, 2)
+                    commission_usd = round(commission_usd, 2)
+                    profit_rub = round(profit_rub, 2)
+                    profit_usd = round(profit_usd, 2)
+                    efficiency = round(profit_usd / oborot_intraday * 200, 2) if oborot_intraday != 0 else round(Decimal('0'), 2)
+                    current_day = currentdate.strftime("%Y-%m-%d")
+                    summary_table.add_row([current_day, oborot_usd, oborot_rub, commission_usd, commission_rub, profit_usd, profit_rub, efficiency, num_of_trades])
+                oborot_rub = Decimal('0')
+                oborot_usd = Decimal('0')
+                oborot_intraday = Decimal('0')
+                commission_rub = Decimal('0')
+                commission_usd = Decimal('0')
+                profit_rub = Decimal('0')
+                profit_usd = Decimal('0')
+                num_of_trades = 0
+                table_trades = dict()
+            
             rates = ExchangeRates(currentdate)
-            oborot_rub = Decimal('0')
-            oborot_usd = Decimal('0')
-            oborot_intraday = Decimal('0')
-            commission_rub = Decimal('0')
-            commission_usd = Decimal('0')
-            profit_rub = Decimal('0')
-            profit_usd = Decimal('0')
-            num_of_trades = 0
-            table_trades = dict()
-        
+            currentdate = operationdate
+            
         num_of_trades += 1
         payment = abs(Decimal(operation.payment))
         currency = operation.currency.value
@@ -193,7 +196,11 @@ def day_results(operations, date, to_reversed):
     profit_rub = round(profit_rub, 2)
     profit_usd = round(profit_usd, 2)
     efficiency = round(profit_usd / oborot_intraday * 200, 2) if oborot_intraday != 0 else round(Decimal('0'), 2)
+    
     current_day = currentdate.strftime("%Y-%m-%d")
+    
+    if consolidated:
+        current_day = startdate.strftime("%Y-%m-%d") + " .. " + current_day
     
     summary_table.add_row([current_day, oborot_usd, oborot_rub, commission_usd, commission_rub, profit_usd, profit_rub, efficiency, num_of_trades])
 
@@ -225,9 +232,9 @@ def get_period(args, to_reversed):
     second_date = None
     date2 = None
     if nop > 1:
-        first_date = sys.argv[1]
+        first_date = args[1]
     if nop > 2:
-        second_date = sys.argv[2]
+        second_date = args[2]
     today = get_now() - datetime.timedelta(hours=3)
     if first_date == None or first_date.lower() == "today":
         date1 = today
@@ -244,19 +251,36 @@ def get_period(args, to_reversed):
     elif first_date.lower() == "thisyear":
         date2 = today
         date1 = today.replace(month=1, day=1, hour=2, minute=0, second=0, microsecond=0)
+    elif first_date.lower() == "lastweek":
+        weekday = today.weekday()
+        date1 = (today - datetime.timedelta(days=weekday+7)).replace(hour=2, minute=0, second=0, microsecond=0)
+        date2 = today - datetime.timedelta(days=weekday+1)
+    elif first_date.lower() == "lastmonth":
+        begin_month = today.replace(day=1, hour=2, minute=0, second=0, microsecond=0)
+        date2 = begin_month - datetime.timedelta(days=1)
+        date1 = date2.replace(day=1, hour=2, minute=0, second=0, microsecond=0)
+    elif first_date.lower() == "lastyear":
+        begin_year = today.replace(month=1, day=1, hour=2, minute=0, second=0, microsecond=0)
+        date2 = begin_year - datetime.timedelta(days=1)
+        date1 = date2.replace(month=1, day=1, hour=2, minute=0, second=0, microsecond=0)
     else:
         date1 = get_date_from_string(first_date)
-    if second_date != None:
+    if date2 == None and second_date != None:
         date2 = get_date_from_string(second_date)
     if date2 != None and date2 < date1:
         date1, date2 = date2, date1
-    
+        
     return date1, date2
 
 
 if __name__ == "__main__":
     to_reversed = True
-    date1, date2 = get_period(sys.argv, to_reversed)
+    args = sys.argv
+    date1, date2 = get_period(args, to_reversed)
     
+    consolidated = False
+    if (len(args) > 2 and args[2].lower() == "cons") or (len(args) > 3 and args[3].lower() == "cons"):
+        consolidated = True
+
     operations = tinkoff.get_operations(date1, date2)
-    day_results(operations, date1, to_reversed)
+    day_results(operations, date1, to_reversed, consolidated)
