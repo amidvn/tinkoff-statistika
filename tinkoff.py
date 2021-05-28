@@ -1,7 +1,7 @@
-import tinvest
 import os
 import datetime
-from pprint import pprint
+
+import tinvest
 
 
 TOKEN = os.getenv("TINVEST_TOKEN")
@@ -24,11 +24,11 @@ def get_portfolio_currencies() -> list:
 
 def get_operations(date1, date2) -> list:
     day_begin = date1.replace(hour=2, minute=0, second=0, microsecond=0)
-    if date2 == None:
+    if date2 is None:
         day_end = day_begin + datetime.timedelta(days=1)
     else:
-        day_end = date2.replace(hour=2, minute=0, second=0, microsecond=0) + datetime.timedelta(days=1)   
-    
+        day_end = date2.replace(hour=2, minute=0, second=0, microsecond=0) + datetime.timedelta(days=1)
+
     api = tinvest.OperationsApi(client)
     response = api.operations_get(from_=day_begin, to=day_end)
     operations = response.parse_json().payload.operations
@@ -62,8 +62,7 @@ def search_figi(figi):
     response = api.market_search_by_figi_get(figi)
     result = response.parse_json().payload
     return result
-    
+
 
 if __name__ == "__main__":
     pass
-    

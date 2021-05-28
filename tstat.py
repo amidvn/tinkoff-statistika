@@ -1,20 +1,20 @@
 import sys
 import datetime
-import tinvest
 import locale
-import tinkoff
 from decimal import Decimal
+
 from pytz import timezone
-from pprint import pprint
 from pycbrf.toolbox import ExchangeRates
-from prettytable import PrettyTable  
+from prettytable import PrettyTable
+
+import tinkoff
 
 
 def get_now() -> datetime:
     moscow_tz = timezone('Europe/Moscow')
     return moscow_tz.localize(datetime.datetime.now())
-    
-    
+
+
 def nft(num):
     return locale.format_string('%0.2f', num, grouping=True)
 
@@ -84,16 +84,16 @@ def day_results(operations, date, to_reversed, consolidated):
     else:
         positions = dict()
     table_trades = dict()
-    
+
     dict_turnovers = dict()
     dict_day_profits = dict()
 
     summary_table = PrettyTable()
-    #summary_table.field_names = ["Day", "Turnover, $", "Turnover, ₽", "Comm., $", "Comm., ₽", "Profit/loss, $", "Profit/loss, ₽", "Efficiency, %", "Amount of trades"]
+    # summary_table.field_names = ["Day", "Turnover, $", "Turnover, ₽", "Comm., $", "Comm., ₽", "Profit/loss, $", "Profit/loss, ₽", "Efficiency, %", "Amount of trades"]
     summary_table.field_names = ["День", "Оборот, $", "Оборот, ₽", "Комиссия, $", "Комиссия, ₽", "Финрез, $", "Финрез, ₽", "Эфф-сть, %", "Кол-во сделок"]
     summary_table.align = "r"
     summary_table.align["День"] = "c"
-            
+
     currentdate = date.combine(date.date(), date.min.time())
     startdate = currentdate
 
@@ -109,7 +109,7 @@ def day_results(operations, date, to_reversed, consolidated):
 
         operationdate = operation.date - datetime.timedelta(hours=3)
         operationdate = operationdate.combine(operationdate.date(), operationdate.min.time())
-        
+
         if operationdate != currentdate:
             if not consolidated:
                 if oborot_usd != 0:
@@ -131,10 +131,10 @@ def day_results(operations, date, to_reversed, consolidated):
                 profit_usd = Decimal('0')
                 num_of_trades = 0
                 table_trades = dict()
-            
+
             rates = ExchangeRates(currentdate)
             currentdate = operationdate
-            
+
         num_of_trades += 1
         payment = abs(Decimal(operation.payment))
         currency = operation.currency.value
@@ -143,25 +143,24 @@ def day_results(operations, date, to_reversed, consolidated):
             rate_for_usd = Decimal(1) / Decimal(rates['USD'].value)
         elif currency == 'USD':
             rate_for_rub = Decimal(rates['USD'].value)
-            rate_for_usd = 1    
+            rate_for_usd = 1
         else:
             rate_for_rub = rates[currency].value
             rate_for_usd = Decimal(1) / Decimal(rates['USD'].value) * Decimal(rates[currency].value)
         oborot_rub += payment * rate_for_rub
         oborot_usd += payment * rate_for_usd
-        
+
         commission = abs(Decimal(operation.commission.value)) if operation.commission else 0
         commission_rub += commission * rate_for_rub
         commission_usd += commission * rate_for_usd
 
         figi = operation.figi
-        
+
         if figi not in dict_turnovers:
             dict_turnovers[figi] = payment * rate_for_usd
         else:
-            dict_turnovers[figi] += payment * rate_for_usd    
+            dict_turnovers[figi] += payment * rate_for_usd
 
-        
         quantity = operation.quantity_executed if operation_type == 'Buy' else -operation.quantity_executed
         if figi in positions:
             positions[figi] -= quantity
@@ -186,8 +185,8 @@ def day_results(operations, date, to_reversed, consolidated):
             if figi not in dict_day_profits:
                 dict_day_profits[figi] = profit_day * rate_for_usd
             else:
-                dict_day_profits[figi] += profit_day * rate_for_usd    
-            del table_trades[figi]    
+                dict_day_profits[figi] += profit_day * rate_for_usd
+            del table_trades[figi]
 
     oborot_rub = round(oborot_rub, 2)
     oborot_usd = round(oborot_usd, 2)
@@ -196,15 +195,15 @@ def day_results(operations, date, to_reversed, consolidated):
     profit_rub = round(profit_rub, 2)
     profit_usd = round(profit_usd, 2)
     efficiency = round(profit_usd / oborot_intraday * 200, 2) if oborot_intraday != 0 else round(Decimal('0'), 2)
-    
+
     current_day = currentdate.strftime("%Y-%m-%d")
-    
+
     if consolidated:
         current_day = startdate.strftime("%Y-%m-%d") + " .. " + current_day
-    
+
     summary_table.add_row([current_day, oborot_usd, oborot_rub, commission_usd, commission_rub, profit_usd, profit_rub, efficiency, num_of_trades])
 
-    if len(summary_table.get_string().split("\n")) > 5: # If more than one day in the table, then it's need to display the line with totals
+    if len(summary_table.get_string().split("\n")) > 5:  # If more than one day in the table, then it's need to display the line with totals
         calculate_totals(summary_table, oborot_intraday_summary)
         print_with_footer(summary_table)
     else:
@@ -236,7 +235,7 @@ def get_period(args, to_reversed):
     if nop > 2:
         second_date = args[2]
     today = get_now() - datetime.timedelta(hours=3)
-    if first_date == None or first_date.lower() == "today":
+    if first_date is None or first_date.lower() == "today":
         date1 = today
         to_reversed = False
     elif first_date.lower() == "yesterday":
@@ -265,11 +264,11 @@ def get_period(args, to_reversed):
         date1 = date2.replace(month=1, day=1, hour=2, minute=0, second=0, microsecond=0)
     else:
         date1 = get_date_from_string(first_date)
-    if date2 == None and second_date != None:
+    if date2 is None and second_date is not None:
         date2 = get_date_from_string(second_date)
-    if date2 != None and date2 < date1:
+    if date2 is not None and date2 < date1:
         date1, date2 = date2, date1
-        
+
     return date1, date2
 
 
@@ -277,7 +276,7 @@ if __name__ == "__main__":
     to_reversed = True
     args = sys.argv
     date1, date2 = get_period(args, to_reversed)
-    
+
     consolidated = False
     if (len(args) > 2 and args[2].lower() == "cons") or (len(args) > 3 and args[3].lower() == "cons"):
         consolidated = True
