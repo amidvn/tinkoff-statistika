@@ -57,7 +57,7 @@ class OutputTable(object):
         summary_table = PrettyTable()
         summary_table.field_names = field_names
         summary_table.align = "r"
-        summary_table.align[0] = "c"
+        summary_table.align[field_names[0]] = "c"
 
         summaries = RowOT("ИТОГО")
         if "efficiency" not in summaries:
@@ -126,4 +126,5 @@ class RowOT(dict):
         self["num_of_trades"] = 0
 
 
-row = RowOT("2021-05-01")
+if __name__ == "__main__":
+    pass

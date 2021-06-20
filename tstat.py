@@ -28,10 +28,16 @@ def sort_dict(d) -> str:
     list_d.sort(key=lambda i: i[1], reverse=True)
     num = 1
     result = ""
+    if NUMBER_FOR_TOP > 10:
+        mapping_figi = tinkoff.get_market_stocks_tickers_from_figi()
+    else:
+        mapping_figi = dict()
     for i in list_d:
         figi = i[0]
         value = round(i[1], 2)
-        ticker = tinkoff.search_figi(figi).ticker
+        if figi not in mapping_figi:
+            mapping_figi[figi] = tinkoff.search_figi(figi).ticker
+        ticker = mapping_figi[figi]
         result += f"{num}) {ticker} (${value}) "
         num += 1
         if num > NUMBER_FOR_TOP:
